@@ -14,25 +14,26 @@
     </el-col>
     <br>
     <el-col :span="12" :offset="4" v-for="(catItem,catIndex) in categories" :key="catIndex">
-      <h3>{{ catItem.title }}</h3>
+      <h3 class="text-left">{{ catItem.title }}</h3>
       <el-row>
         <el-col
-            v-for="(numItem, numIndex) in 5"
+            v-for="(numItem, numIndex) in catItem.posterUrls"
             :key="numItem"
             :span="4"
             :offset="numIndex % 5 !== 0 ? 1 : 0"
             class="flex space-evenly"
         >
-          <div class="relative card">
+          <div class="relative card br-4 w-100">
             <div class="absolute wh-inherit">
               <img
-                  :src="posterUrl[catIndex*5+numIndex%5]"
-                  class="image wh-inherit"
+                  :src="numItem"
+                  class="image wh-inherit img-fill"
               />
             </div>
-            <div class="op-0 op absolute flex justify-center wh-inherit">
-              <router-link to="/details"></router-link>
-              <div class="pd-5 float-bottom">
+            <div class="op-0 op absolute flex justify-center wh-inherit flex-column ">
+              <router-link :to="{path: '/details',query:{id:catItem.ids[numIndex]}}" class="height">
+              </router-link>
+              <div class="pd-5">
                 <el-button type="text" class="white bg-green pd-8">加入资源库</el-button>
               </div>
             </div>
@@ -60,7 +61,7 @@ const searchInput = ref<string>('')
 const categories = ref<any[]>([
   {
     title: '热门 本周',
-    url: endPoints.weekTrend.url
+    url: endPoints.weekTrend.url,
   }, {
     title: '热门 正在播出',
     url: endPoints.onAir.url
@@ -76,15 +77,13 @@ const categories = ref<any[]>([
   }
 ])
 
-let posterIds = ref<any[]>([])
-let posterUrl = ref<any[]>([])
 const base = 'https://media.kitsu.io/anime/poster_images/'
 const getPoster = () => {
   axios.all(categories.value.map(category=>{
     instance.get(`${category.url}`)
     .then(res => {
-      posterIds.value.push(res.data.data.map((item: { id: string }) => item.id))
-      posterUrl.value= posterIds.value.flat().map((id: string) => `${base}${id}/medium.jpg`)
+      category.ids = res.data.data.map((item: { id: string }) => item.id)
+      category.posterUrls= category.ids.map((id: string) => `${base}${id}/medium.jpg`)
     })
   })).then()
 }
@@ -96,9 +95,7 @@ onMounted(() => {
 <style scoped>
 @import '../assets/style/index.scss';
 .card{
-  width: 100%;
   height: 173px;
-  border-radius: 5px;
 }
 
 .image {
@@ -114,6 +111,9 @@ onMounted(() => {
 .op:hover {
   opacity: 1;
   background-image: linear-gradient(rgba(150,150,150,0),rgba(33,33,33,1));
+}
+.height{
+  height: 131px;
 }
 
 
