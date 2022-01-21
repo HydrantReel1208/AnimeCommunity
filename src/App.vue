@@ -26,6 +26,7 @@ html,body{
 h1, h2, h3, h4, h5, h6 {
   font-family: Asap,sans-serif;
   font-weight: 700;
+  color: #464646;
 }
 li{
   list-style: none;
