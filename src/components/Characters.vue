@@ -8,7 +8,7 @@
   <el-row :gutter="20">
     <el-col :span="8" v-for="item in characters">
       <el-card :body-style="{ padding: '0px'}" class="mb-10">
-        <img class="charImg" :src="item.imgUrl">
+        <img class="cardImg" :src="item.imgUrl">
         <div class="pd-8">
           <span>{{item.name}}</span>
         </div>

@@ -42,7 +42,7 @@
       </el-affix>
     </div>
     <div class="media-container">
-      <router-view/>
+      <router-view @getLabel="changeActive"/>
     </div>
   </div>
 </template>
@@ -91,9 +91,13 @@ const getDetails = async(id: string | LocationQueryValue[]) =>{
 const tabSwitch = (route: any) => {
   router.push({name: route.props.label, query:{id: id}})
 }
+const changeActive = (val:string) =>{
+  activeName.value=val
+}
 onMounted(() => {
   if (id) {
     getDetails(id)
+    router.push({name: activeName.value, query:{id: id}})
   }
 })
 </script>

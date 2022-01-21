@@ -39,7 +39,7 @@
       <el-link type="danger" :underline="false" class="font-16">{{ synopsis.showMore ? '更多' : '收起' }}</el-link>
     </el-col>
   </el-row>
-  <el-row class="rank split-line" justify="space-between">
+  <el-row class="rank mb-20 split-line" justify="space-between">
     <el-col span="12">
       <svg class="icon" width="12" height="12" viewBox="0 0 1792 1792" color="#E74C3C">
         <path fill="currentColor" d="M896 1664q-26 0-44-18l-624-602q-10-8-27.5-26T145 952.5 77 855 23.5 734 0 596q0-220
@@ -66,19 +66,19 @@
               allowfullscreen/>
     </div>
   </div>
-  <el-card>
-    <h5>详情</h5>
+  <el-card class="mb-20 pd-30">
+    <div class="title-height"><h5>详情</h5></div>
     <ul class="flex flex-wrap font-14">
       <li v-for="item in info" class="flex flex-wrap text-left">
         <strong>{{ item.label }}</strong>
         <span>{{ item.value }}</span>
       </li>
     </ul>
-    <div class="character split-line">
+    <div class="mt-30 split-line">
       <h5>角色</h5>
       <el-row :gutter="10">
         <el-col :span="6" v-for="item in charImages">
-            <img class="charImg" :src="item">
+          <img class="cardImg" :src="item">
         </el-col>
       </el-row>
       <br>
@@ -89,6 +89,23 @@
           @click="moreChar"
       >
         所有角色
+      </el-link>
+    </div>
+    <div class="mt-50 split-line">
+      <h5>更多来自此系列的内容</h5>
+      <el-row :gutter="10">
+        <el-col :span="6" v-for="item in fchImages">
+          <img class="cardImg" :src="item">
+        </el-col>
+      </el-row>
+      <br>
+      <el-link
+          type="info"
+          :underline="false"
+          class="float-left"
+          @click="moreFch"
+      >
+        查看全部内容
       </el-link>
     </div>
   </el-card>
@@ -104,6 +121,7 @@ let router = useRouter()
 let id = route.query.id
 let details = JSON.parse(sessionStorage.getItem('details') as string)
 const charImages = ref([])
+const fchImages = ref([])
 const synopsis = reactive({
   title: details.canonicalTitle,
   year: details.startDate.slice(0, 4),
@@ -159,19 +177,40 @@ const info = [
 const getCharacters = async (id: string) => {
   let data = await instance
       .get(`/castings?filter[media_type]=Anime&filter[media_id]=${id}&filter[is_character]=true&filter[language]=Japanese&include=character&page[limit]=20`)
-      .then(res=>{
-        if(Object.keys(res.data.included).length!==0){
+      .then(res => {
+        if (Object.keys(res.data.included).length !== 0) {
           return res.data.included
-        }else {
+        } else {
           console.log('未获取到角色信息')
         }
       })
-  let characters = data.map((obj: any)=> {
+  let characters = data.map((obj: any) => {
     return Object.assign({}, {id: obj.id, name: obj.attributes.name, imgUrl: obj.attributes.image.original})
   })
-  sessionStorage.setItem('characters',JSON.stringify(characters))
-  charImages.value=characters.slice(0,4).map((item: { imgUrl: any; })=>item.imgUrl)
-  console.log(charImages.value)
+  sessionStorage.setItem('characters', JSON.stringify(characters))
+  charImages.value = characters.slice(0, 4).map((item: { imgUrl: any; }) => item.imgUrl)
+}
+const getFranchise = async (id: string) => {
+  let data = await instance
+      .get(`/media-relationships?filter[source_type]=Anime&filter[source_id]=${id}&sort=role&include=destination&page[limit]=20`)
+      .then(res => {
+        if (Object.keys(res.data.included).length !== 0) {
+          return res.data.included
+        } else {
+          console.log('未获取到特许经销权')
+        }
+      })
+  let franchise = data.map((obj: any) => {
+    return Object.assign({}, {
+      id:obj.id,
+      canonicalTitle: obj.attributes.canonicalTitle,
+      showType: obj.attributes.showType,
+      year: obj.attributes.startDate.slice(0, 4),
+      imgUrl: obj.attributes.posterImage.medium
+    })
+  })
+  sessionStorage.setItem('franchise', JSON.stringify(franchise))
+  fchImages.value = franchise.slice(0, 4).map((item: { imgUrl: any; }) => item.imgUrl)
 }
 
 
@@ -182,13 +221,20 @@ const exchangeText = () => {
 const playVideo = () => {
   synopsis.display = !synopsis.display
 }
-
-const moreChar = () =>{
-  router.push({name: 'characters', query:{id: id}})
+const emit = defineEmits(['getLabel'])
+const moreChar = () => {
+  router.push({name: 'characters', query: {id: id}})
+  emit('getLabel', 'characters')
 }
+const moreFch = () => {
+  router.push({name: 'franchise', query: {id: id}})
+  emit('getLabel', 'franchise')
+}
+
 onMounted(() => {
   if (id) {
     getCharacters(id as string)
+    getFranchise(id as string)
   }
 })
 </script>
@@ -197,8 +243,6 @@ onMounted(() => {
 @import "../assets/style/index.scss";
 
 h3 {
-  font-family: Asap, sans-serif;
-  font-weight: 700;
   font-size: 1.75rem;
 }
 
@@ -227,9 +271,6 @@ strong {
   margin: 5px 0;
 }
 
-.character {
-  margin-top: 30px;
-}
 
 .description {
   font-weight: 450;
@@ -255,7 +296,6 @@ strong {
 .rank {
   border-bottom: 1px solid #eaeaea;
   padding: 15px 0;
-  margin-bottom: 20px;
   margin-top: 10px;
   font-size: 12px;
   font-weight: 500;
@@ -265,5 +305,9 @@ strong {
   position: absolute;
   background-image: linear-gradient(rgba(0, 0, 0, .1), rgba(0, 0, 0, .6) 50%, rgba(0, 0, 0, .6) 100%);
   z-index: 1;
+}
+
+.title-height {
+  line-height: 0px;
 }
 </style>
