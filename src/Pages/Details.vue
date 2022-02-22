@@ -2,11 +2,11 @@
   <div class="w=100 cover-photo" :style="{'background-image':coverPicUrl}">
     <div class="dark">
       <div class="block">
-        <el-carousel trigger="click" height="80px" class="ticker w-25">
-          <el-carousel-item v-for="item in 3" :key="item">
-            <div class="avatar">
-              <el-avatar :size="50" class="inline-block" src=""></el-avatar>
-              <span class="inline-block content">{{ item }}</span>
+        <el-carousel trigger="click" arrow="never" indicator-position="none" height="80px" class="ticker">
+          <el-carousel-item v-for="item in reactions" :key="item">
+            <div class="float-left flex align-center">
+              <el-avatar :size="50" class="inline-block" :src="item.avatar"></el-avatar>
+              <span class="inline-block content text-left">{{ item.text }}</span>
             </div>
           </el-carousel-item>
         </el-carousel>
@@ -28,7 +28,7 @@
           <div class="w-100">
             <img :src="posterUrl" class="wh-inherit">
           </div>
-          <div class="library br-4">
+          <div class="library br-4 gray-border">
             <span class="entry-header relative white-gray">
               Add to Library
             </span>
@@ -51,6 +51,7 @@
 import {ref, onMounted} from "vue";
 import {LocationQueryValue, useRoute, useRouter} from 'vue-router'
 import instance from "../api/axios";
+
 const route = useRoute()
 const router = useRouter()
 const id = route.query.id
@@ -74,30 +75,60 @@ const mark = ref<object[]>([
 const navTabs = ref<string[]>(["synopsis", "episodes", "characters", "reactions", "franchise"])
 const activeName = ref('synopsis')
 
-const getDetails = async(id: string | LocationQueryValue[]) =>{
+const getDetails = async (id: string | LocationQueryValue[]) => {
   await instance
       .get(`/anime/${id}`)
-      .then(res=>{
-        if(Object.keys(res.data.data.attributes).length!==0){
-          sessionStorage.setItem('details',JSON.stringify(res.data.data.attributes))
-        }else{
+      .then(res => {
+        if (Object.keys(res.data.data.attributes).length !== 0) {
+          sessionStorage.setItem('details', JSON.stringify(res.data.data.attributes))
+        } else {
           console.log("未获取到详细信息")
         }
       })
-  details.value=JSON.parse(sessionStorage.getItem('details') as string)
-  posterUrl.value=details.value.posterImage.large
+  details.value = JSON.parse(sessionStorage.getItem('details') as string)
+  posterUrl.value = details.value.posterImage.large
   coverPicUrl.value = `url(${details.value.coverImage.original})`
 }
-const tabSwitch = (route: any) => {
-  router.push({name: route.props.label, query:{id: id}})
+let reactions = ref([])
+const getReactions = async (id: string | LocationQueryValue[]) => {
+  let data = await instance
+      .get(`/media-reactions?filter[animeId]=${id}&include=user&sort=-upVotesCount&page[limit]=20`)
+      .then(res => {
+        if (Object.keys(res.data).length !== 0) {
+          return res.data
+        } else {
+          console.log('未获取到反应信息')
+        }
+      })
+  let comment = data.data.map((obj: any) => {
+    return Object.assign({}, {
+      vote: obj.attributes.upVotesCount,
+      text: obj.attributes.reaction
+    })
+  })
+  let user = data.included.map((obj: any) => {
+    return Object.assign({}, {
+      name: obj.attributes.name,
+      avatar: obj.attributes.avatar?.small
+    })
+  })
+  let reaction = comment.map((obj: any, index: string | number) => {
+    return Object.assign(obj, user[index])
+  })
+  sessionStorage.setItem('reactions', JSON.stringify(reaction))
+  reactions.value = reaction.slice(0, 3)
 }
-const changeActive = (val:string) =>{
-  activeName.value=val
+const tabSwitch = (route: any) => {
+  router.push({name: route.props.label, query: {id: id}})
+}
+const changeActive = (val: string) => {
+  activeName.value = val
 }
 onMounted(() => {
   if (id) {
     getDetails(id)
-    router.push({name: activeName.value, query:{id: id}})
+    getReactions(id)
+    router.push({name: activeName.value, query: {id: id}})
   }
 })
 </script>
@@ -142,7 +173,6 @@ onMounted(() => {
 
 .library {
   margin-top: 20px;
-  border: 1px solid #eaeaea;
   padding: 12px;
   position: relative;
 }
@@ -169,18 +199,19 @@ onMounted(() => {
   margin-left: 330px;
   padding-top: 320px;
 }
-.content{
+
+.content {
   max-width: 460px;
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 600;
   color: #FFF;
+  padding-left: 10px;
 }
+
 .ticker {
-
+  max-width: 50%;
+  padding-left: 30px;
 }
 
-.avatar {
-
-}
 
 </style>

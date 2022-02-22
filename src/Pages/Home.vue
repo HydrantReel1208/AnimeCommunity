@@ -1,15 +1,25 @@
 <template>
   <el-row>
     <el-col :span="12" :offset="4">
-      <el-row :gutter="20">
+      <el-row>
         <h1 class="ml-3 w-35 text-gray-600 inline-flex items-center">探索动漫</h1>
-        <el-input
+      </el-row>
+      <el-row>
+        <el-autocomplete
             v-model="searchInput"
-            class="w-100 m-2"
-            size="large"
-            placeholder="您正在搜索什么？"
+            class="searchBar"
+            placeholder="您正在搜索什么"
             :prefix-icon="Search"
-        />
+            :fetch-suggestions="querySearchAsync"
+            @select="handleSelect"
+            @keyup.enter.native="handleSelect"
+        >
+          <template #default="{item}">
+            <div class="value">{{item.canonicalTitle}}</div>
+            <span class="link">{{item.posterImage}}</span>
+            <img :src="item">
+          </template>
+        </el-autocomplete>
       </el-row>
     </el-col>
     <br>
@@ -56,7 +66,6 @@ import endPoints from "../api";
 import instance from "../api/axios";
 import axios from "axios";
 
-
 const searchInput = ref<string>('')
 const categories = ref<any[]>([
   {
@@ -79,23 +88,73 @@ const categories = ref<any[]>([
 
 const base = 'https://media.kitsu.io/anime/poster_images/'
 const getPoster = () => {
-  axios.all(categories.value.map(category=>{
+  axios.all(categories.value.map(category => {
     instance.get(`${category.url}`)
-    .then(res => {
-      category.ids = res.data.data.map((item: { id: string }) => item.id)
-      category.posterUrls= category.ids.map((id: string) => `${base}${id}/medium.jpg`)
-    })
+        .then(res => {
+          category.ids = res.data.data.map((item: { id: string }) => item.id)
+          category.posterUrls = category.ids.map((id: string) => `${base}${id}/medium.jpg`)
+        })
   })).then()
 }
-onMounted(() => {
-  getPoster()
-})
+
+interface LinkItem {
+  canonicalTitle: string
+  id: number
+  posterImage: string
+}
+
+const links = ref<LinkItem[]>([])
+const getHint = () => {
+  instance.post('https://awqo5j657s-dsn.algolia.net/1/indexes/production_media/query?x-algolia-agent=Algolia for vanilla JavaScript (lite) 3.24.12&x-algolia-application-id=AWQO5J657S&x-algolia-api-key=NzYxODA5NmY0ODRjYTRmMzQ2YjMzNzNmZmFhNjY5ZGRmYjZlMzViN2VkZDIzMGUwYjM5ZjQ5NjAwZGI4ZTc5MHJlc3RyaWN0SW5kaWNlcz1wcm9kdWN0aW9uX21lZGlhJmZpbHRlcnM9Tk9UK2FnZVJhdGluZyUzQVIxOA==', {
+    query: searchInput.value,
+    attributesToRetrieve: ["id", "canonicalTitle", "posterImage"],
+  }).then((res) => {
+    let data = res.data?.hits
+    links.value = data.map((obj: any) => {
+      return Object.assign({}, {
+        canonicalTitle: obj.canonicalTitle,
+        id: obj.id,
+        posterImage: obj.posterImage.small
+      })
+    })
+  })
+}
+let timeout=1000
+const querySearchAsync = (queryString: string, cb: (arg: any) => void) => {
+  const results = queryString
+      ? links.value.filter(createFilter(queryString))
+      : links.value
+  console.log(results)
+  clearTimeout(timeout)
+  timeout = setTimeout(() => {
+    cb(results)
+  }, 3000 * Math.random())
+}
+const createFilter = (queryString: string) => {
+  return (anime: LinkItem) => {
+    return (
+        anime.canonicalTitle.toLowerCase().indexOf(queryString.toLowerCase()) === 0
+    )
+  }
+}
+  const handleSelect = (item: LinkItem) => {
+    console.log(item)
+  }
+  onMounted(() => {
+    getPoster()
+    getHint()
+  })
 </script>
 
 <style scoped>
 @import '../assets/style/index.scss';
-.card{
+
+.card {
   height: 173px;
+}
+
+.searchBar li {
+  width: 500px;
 }
 
 .image {
@@ -110,9 +169,10 @@ onMounted(() => {
 
 .op:hover {
   opacity: 1;
-  background-image: linear-gradient(rgba(150,150,150,0),rgba(33,33,33,1));
+  background-image: linear-gradient(rgba(150, 150, 150, 0), rgba(33, 33, 33, 1));
 }
-.height{
+
+.height {
   height: 131px;
 }
 
