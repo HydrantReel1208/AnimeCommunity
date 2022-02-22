@@ -30,7 +30,7 @@
   </el-row>
   <el-row>
     <el-col>
-      <p class="description text-left font-16 dark-gray"
+      <p class="description text-left font-16 dark-gray weight-500"
          :style="{'-webkit-line-clamp': synopsis.showMore ? 9 : 'unset'}">
         {{ synopsis.description }}
       </p>
@@ -39,7 +39,14 @@
       <el-link type="danger" :underline="false" class="font-16">{{ synopsis.showMore ? '更多' : '收起' }}</el-link>
     </el-col>
   </el-row>
-  <el-row class="rank mb-20 split-line" justify="space-between">
+  <el-row :gutter="10">
+    <ul class="flex flex-wrap pd-start">
+      <li v-for="item in tabs" class="tab weight-500">
+        <div class="media-tag dark-gray gray-border br-4 mr-5">{{item}}</div>
+      </li>
+    </ul>
+  </el-row>
+  <el-row class="rank weight-500 mb-20 split-line" justify="space-between">
     <el-col span="12">
       <svg class="icon" width="12" height="12" viewBox="0 0 1792 1792" color="#E74C3C">
         <path fill="currentColor" d="M896 1664q-26 0-44-18l-624-602q-10-8-27.5-26T145 952.5 77 855 23.5 734 0 596q0-220
@@ -69,7 +76,7 @@
   <el-card class="mb-20 pd-30">
     <div class="title-height"><h5>详情</h5></div>
     <ul class="flex flex-wrap font-14">
-      <li v-for="item in info" class="flex flex-wrap text-left">
+      <li v-for="item in info" class="basicInfo flex flex-wrap text-left">
         <strong>{{ item.label }}</strong>
         <span>{{ item.value }}</span>
       </li>
@@ -122,6 +129,7 @@ let id = route.query.id
 let details = JSON.parse(sessionStorage.getItem('details') as string)
 const charImages = ref([])
 const fchImages = ref([])
+const tabs = ref([])
 const synopsis = reactive({
   title: details.canonicalTitle,
   year: details.startDate.slice(0, 4),
@@ -212,7 +220,18 @@ const getFranchise = async (id: string) => {
   sessionStorage.setItem('franchise', JSON.stringify(franchise))
   fchImages.value = franchise.slice(0, 4).map((item: { imgUrl: any; }) => item.imgUrl)
 }
-
+const getTabs= async (id: string) => {
+  let data = await instance
+      .get(`/anime/${id}/categories?page[limit]=20`)
+      .then(res => {
+        if (Object.keys(res.data.data).length !== 0) {
+          return res.data.data
+        } else {
+          console.log('未获取到标签信息')
+        }
+      })
+  tabs.value = data.map((obj:any)=>obj.attributes.title)
+}
 
 const exchangeText = () => {
   synopsis.showMore = !synopsis.showMore
@@ -235,6 +254,7 @@ onMounted(() => {
   if (id) {
     getCharacters(id as string)
     getFranchise(id as string)
+    getTabs(id as string)
   }
 })
 </script>
@@ -250,10 +270,6 @@ h5 {
   font-size: 17px;
 }
 
-li {
-  min-width: 50%;
-  margin-bottom: 5px;
-}
 
 strong {
   width: 70px;
@@ -273,7 +289,6 @@ strong {
 
 
 .description {
-  font-weight: 450;
   font-family: "Open Sans", sans-serif;
   text-overflow: ellipsis;
   overflow-y: hidden;
@@ -282,6 +297,10 @@ strong {
   white-space: normal;
 }
 
+.basicInfo {
+  min-width: 50%;
+  margin-bottom: 5px;
+}
 .media-preview {
   height: 70px;
   position: relative;
@@ -298,7 +317,6 @@ strong {
   padding: 15px 0;
   margin-top: 10px;
   font-size: 12px;
-  font-weight: 500;
 }
 
 .media-preview-overlay {
@@ -306,8 +324,20 @@ strong {
   background-image: linear-gradient(rgba(0, 0, 0, .1), rgba(0, 0, 0, .6) 50%, rgba(0, 0, 0, .6) 100%);
   z-index: 1;
 }
+.media-tag{
+  background: #FFF;
+  padding: 4px 8px;
+}
 
 .title-height {
   line-height: 0px;
+}
+.tab{
+  display: inline-block;
+  font-size: 12px;
+  margin-bottom: 5px;
+}
+.pd-start{
+  padding-inline-start: 0px;
 }
 </style>
